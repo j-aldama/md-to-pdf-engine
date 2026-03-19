@@ -1,0 +1,46 @@
+{
+  "name": "md-to-pdf-engine",
+  "version": "1.0.0",
+  "description": "Professional PDF generation from Markdown with customizable templates, syntax highlighting, and cover pages",
+  "author": "Juan Ignacio Aldama <j-aldama@users.noreply.github.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/j-aldama/md-to-pdf-engine.git"
+  },
+  "keywords": [
+    "pdf",
+    "markdown",
+    "markdown-to-pdf",
+    "puppeteer",
+    "cli",
+    "templates",
+    "syntax-highlighting"
+  ],
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "md-to-pdf": "dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "prepublishOnly": "npm run build",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "highlight.js": "11.11.1",
+    "marked": "15.0.7",
+    "puppeteer": "24.4.0"
+  },
+  "devDependencies": {
+    "tsup": "8.4.0",
+    "typescript": "5.8.2"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
