@@ -61,3 +61,63 @@ export interface PDFOptions {
   /** Page number format */
   pageNumberFormat: "Página X de Y" | "Page X of Y" | "X/Y" | "X";
 }
+
+/** Config file schema loaded from .md-to-pdfrc, .md-to-pdfrc.json, etc. */
+export interface ConfigFile {
+  template?: string;
+  size?: "A4" | "Letter" | "Legal";
+  orientation?: "portrait" | "landscape";
+  cover?: boolean;
+  pageNumbers?: boolean;
+  pageNumberFormat?: "Página X de Y" | "Page X of Y" | "X/Y" | "X";
+  author?: string;
+  title?: string;
+  subject?: string;
+  keywords?: string[];
+  logoUrl?: string;
+  watermark?: string;
+  watermarkOpacity?: number;
+}
+
+/** PDF metadata to embed in the document */
+export interface PDFMetadata {
+  title?: string;
+  author?: string;
+  subject?: string;
+  keywords?: string[];
+  creator?: string;
+  producer?: string;
+}
+
+/** Options for the post-processing pipeline */
+export interface PostProcessOptions {
+  metadata?: PDFMetadata;
+  watermark?: { imagePath: string; opacity: number };
+  encrypt?: { password: string };
+}
+
+/** Fully resolved options after merging CLI flags, config file, and defaults */
+export interface ResolvedOptions {
+  pageSize: "A4" | "Letter" | "Legal";
+  orientation: "portrait" | "landscape";
+  margins: { top: number; bottom: number; left: number; right: number };
+  includeCoverPage: boolean;
+  includePageNumbers: boolean;
+  pageNumberFormat: "Página X de Y" | "Page X of Y" | "X/Y" | "X";
+  templateId: string;
+  title?: string;
+  author?: string;
+  subject?: string;
+  keywords?: string[];
+  watermarkPath?: string;
+  watermarkOpacity?: number;
+  encrypt?: boolean;
+  password?: string;
+  stdout?: boolean;
+  overwrite?: boolean;
+  verbose?: boolean;
+  quiet?: boolean;
+  outputDir?: string;
+  recursive?: boolean;
+  logoUrl?: string;
+}
