@@ -1,8 +1,9 @@
 import { Marked } from "marked";
 import hljs from "highlight.js";
-import puppeteer from "puppeteer";
+import puppeteer, { type Browser } from "puppeteer";
 import { generatePDFStyles, generateHeaderHTML, generateFooterHTML } from "./pdf-styles";
 import type { TemplateConfig, PDFOptions } from "./types";
+import type { Logger } from "./cli/logger";
 
 const PAGE_SIZE_MAP: Record<string, { width: string; height: string }> = {
   A4: { width: "210mm", height: "297mm" },
@@ -161,13 +162,19 @@ function buildFooterTemplate(
 /**
  * Main PDF rendering engine.
  * Converts Markdown to PDF using Puppeteer with full visual hierarchy.
+ *
+ * @param externalBrowser - Optional shared browser instance for batch mode (avoids re-launching Chromium).
+ * @param logger - Optional logger for verbose output.
  */
 export async function generatePDFFromMarkdown(
   markdown: string,
   template: TemplateConfig,
   options: PDFOptions,
+  externalBrowser?: Browser,
+  logger?: Logger,
 ): Promise<Buffer> {
-  let browser: Awaited<ReturnType<typeof puppeteer.launch>> | null = null;
+  const shouldClose = !externalBrowser;
+  let browser: Browser | null = externalBrowser ?? null;
 
   try {
     const fullHTML = markdownToHTML(markdown, template, {
@@ -176,12 +183,16 @@ export async function generatePDFFromMarkdown(
 
     const margins = options.margins ?? template.margins;
 
-    browser = await puppeteer.launch({
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    });
+    if (!browser) {
+      logger?.verbose("Launching Puppeteer...");
+      browser = await puppeteer.launch({
+        headless: true,
+        args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      });
+    }
 
     const page = await browser.newPage();
+    logger?.verbose("Rendering HTML content...");
     await page.setContent(fullHTML, { waitUntil: "networkidle0" });
 
     const pageSize = PAGE_SIZE_MAP[options.pageSize] ?? PAGE_SIZE_MAP["A4"];
@@ -224,6 +235,7 @@ export async function generatePDFFromMarkdown(
       ? buildFooterTemplate(options, margins)
       : '<div style="font-size: 1px;"></div>';
 
+    logger?.verbose("Generating PDF...");
     const pdfBuffer = await page.pdf({
       width: pageSize.width,
       height: pageSize.height,
@@ -240,12 +252,16 @@ export async function generatePDFFromMarkdown(
       },
     });
 
-    await browser.close();
-    browser = null;
+    await page.close();
+
+    if (shouldClose && browser) {
+      await browser.close();
+      browser = null;
+    }
 
     return Buffer.from(pdfBuffer);
   } finally {
-    if (browser) {
+    if (shouldClose && browser) {
       try {
         await browser.close();
       } catch {
@@ -253,4 +269,14 @@ export async function generatePDFFromMarkdown(
       }
     }
   }
+}
+
+/**
+ * Launch a shared Puppeteer browser for batch processing.
+ */
+export async function launchBrowser(): Promise<Browser> {
+  return puppeteer.launch({
+    headless: true,
+    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+  });
 }
