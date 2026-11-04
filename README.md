@@ -98,6 +98,8 @@ md-to-pdf info output.pdf
 | `tecnica-documentacion` | Tecnica/Documentacion | Technical manuals, code docs |
 | `moderna-azul` | Moderna Azul | Modern blue-themed documents |
 | `profesional-moderna` | Profesional Moderna | Contemporary professional style |
+| `ejecutiva-oscura` | Ejecutiva Oscura | Dark executive reports with cover, progress bars and Gantt |
+| `manual-usuario` | Manual de Usuario | Printed end-user manuals with callouts and framed screenshots |
 
 ## Config File
 
