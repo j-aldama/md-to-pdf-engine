@@ -158,15 +158,29 @@ function generateDarkExecutiveStyles(template: TemplateConfig): string {
   const info = "#38bdf8"; // cyan — in approval / dev
 
   return `
-    /* ===== Ejecutiva Oscura — full-bleed dark page ===== */
-    html, body {
+    /* ===== Ejecutiva Oscura — full-bleed dark page =====
+       The dark background must reach every physical edge of the sheet.
+       @page margin:0 removes the print margin; html/body paint the full
+       page background; inner spacing lives on <main> so the fill bleeds. */
+    @page {
+      margin: 0;
+      background-color: ${colors.background};
+    }
+    html {
+      background-color: ${colors.background} !important;
+    }
+    body {
       background-color: ${colors.background} !important;
       color: ${colors.text};
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
     }
-    /* Inner page padding (Puppeteer margins are 0 for full-bleed background) */
+    /* Inner page padding (page margins are 0 so the fill is full-bleed) */
     main {
       display: block;
-      padding: 22mm 16mm;
+      background-color: ${colors.background};
+      padding: 20mm 16mm;
     }
 
     /* Headings on dark */
@@ -295,8 +309,13 @@ export function generateHeaderHTML(template: TemplateConfig): string {
 
 /**
  * Generates the footer HTML with page number.
+ * When `darkTheme` is true, the footer blends into a dark page background
+ * (muted text, no light separator line) instead of the default light look.
  */
-export function generateFooterHTML(pageNumberFormat: string): string {
+export function generateFooterHTML(
+  pageNumberFormat: string,
+  darkTheme = false,
+): string {
   let content: string;
 
   switch (pageNumberFormat) {
@@ -315,8 +334,11 @@ export function generateFooterHTML(pageNumberFormat: string): string {
       break;
   }
 
+  const footerColor = darkTheme ? "#8aa0bd" : "#666";
+  const footerBorder = darkTheme ? "1px solid #243b5e" : "1px solid #e0e0e0";
+
   return `
-    <div style="font-size: 9pt; color: #666; text-align: center; width: 100%; padding-top: 5px; border-top: 1px solid #e0e0e0;">
+    <div style="font-size: 9pt; color: ${footerColor}; text-align: center; width: 100%; padding-top: 5px; border-top: ${footerBorder};">
       ${content}
     </div>
   `;

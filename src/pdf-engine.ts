@@ -126,12 +126,15 @@ function buildFooterTextScript(format: string): string {
 function buildFooterTemplate(
   options: PDFOptions,
   margins: { top: number; bottom: number; left: number; right: number },
+  darkTheme = false,
 ): string {
-  const baseFooter = generateFooterHTML(options.pageNumberFormat);
+  const baseFooter = generateFooterHTML(options.pageNumberFormat, darkTheme);
+  const footerColor = darkTheme ? "#8aa0bd" : "#666";
+  const footerBorder = darkTheme ? "1px solid #243b5e" : "1px solid #e0e0e0";
 
   if (options.includeCoverPage) {
     return `<div style="width: 100%; padding: 0 ${margins.left}mm 0 ${margins.right}mm;">
-      <div id="footer-content" style="font-size: 9pt; color: #666; text-align: center; width: 100%; padding-top: 5px; border-top: 1px solid #e0e0e0;">
+      <div id="footer-content" style="font-size: 9pt; color: ${footerColor}; text-align: center; width: 100%; padding-top: 5px; border-top: ${footerBorder};">
         <span id="footer-text"></span>
       </div>
       <script>
@@ -198,6 +201,9 @@ export async function generatePDFFromMarkdown(
     const pageSize = PAGE_SIZE_MAP[options.pageSize] ?? PAGE_SIZE_MAP["A4"];
     const isLandscape = options.orientation === "landscape";
 
+    // Dark templates get a footer that blends into the dark page background.
+    const darkTheme = template.id === "ejecutiva-oscura";
+
     const logoJustify = template.logoPosition === "right"
       ? "flex-end"
       : template.logoPosition === "center"
@@ -232,7 +238,7 @@ export async function generatePDFFromMarkdown(
     }
 
     const footerTemplate = options.includePageNumbers
-      ? buildFooterTemplate(options, margins)
+      ? buildFooterTemplate(options, margins, darkTheme)
       : '<div style="font-size: 1px;"></div>';
 
     logger?.verbose("Generating PDF...");
