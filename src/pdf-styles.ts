@@ -7,7 +7,7 @@ import type { TemplateConfig } from "./types";
 export function generatePDFStyles(template: TemplateConfig): string {
   const { colors, fonts } = template;
 
-  return `
+  const baseCss = `
     /* Reset and base */
     *, *::before, *::after {
       box-sizing: border-box;
@@ -131,6 +131,142 @@ export function generatePDFStyles(template: TemplateConfig): string {
       thead { display: table-header-group; }
       img { page-break-inside: avoid; break-inside: avoid; }
     }
+  `;
+
+  // Rich dark theme: extra rules attached to this template's id only.
+  // Other templates are unaffected.
+  if (template.id === "ejecutiva-oscura") {
+    return baseCss + generateDarkExecutiveStyles(template);
+  }
+
+  return baseCss;
+}
+
+/**
+ * Extra CSS for the "ejecutiva-oscura" template: full-bleed dark page,
+ * metric cards, status pills, colored progress bars and grouped table rows.
+ * Built to render the executive status-report layout on a dark background.
+ */
+function generateDarkExecutiveStyles(template: TemplateConfig): string {
+  const { colors } = template;
+  const panel = "#16223a"; // card / panel surface
+  const panelBorder = "#243b5e"; // panel & table border
+  const muted = "#8aa0bd"; // secondary / muted text
+  const ok = "#22c55e"; // green — done / good
+  const warn = "#f59e0b"; // amber — delay / pending
+  const danger = "#ef4444"; // red — critical / blocker
+  const info = "#38bdf8"; // cyan — in approval / dev
+
+  return `
+    /* ===== Ejecutiva Oscura — full-bleed dark page ===== */
+    html, body {
+      background-color: ${colors.background} !important;
+      color: ${colors.text};
+    }
+    /* Inner page padding (Puppeteer margins are 0 for full-bleed background) */
+    main {
+      display: block;
+      padding: 22mm 16mm;
+    }
+
+    /* Headings on dark */
+    h1 { color: ${colors.primary}; border-bottom: 2px solid ${colors.primary}; }
+    h2 {
+      color: ${colors.primary};
+      border-bottom: 1px solid ${panelBorder};
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      font-size: 20pt;
+    }
+    h3, h4, h5, h6 { color: ${colors.text}; }
+    strong { color: #ffffff; }
+    em { color: ${muted}; }
+    a { color: ${colors.accent}; }
+    hr { border-top: 1px solid ${panelBorder}; }
+    li::marker { color: ${colors.accent}; }
+
+    /* ===== Tables on dark ===== */
+    table {
+      border: 1px solid ${panelBorder};
+      border-radius: 8px;
+      overflow: hidden;
+      background-color: ${panel};
+    }
+    thead { background-color: #0f1d34; color: ${colors.primary}; }
+    th {
+      border: none;
+      border-bottom: 1px solid ${panelBorder};
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      font-size: 9.5pt;
+      color: ${colors.primary};
+    }
+    td {
+      border: none;
+      border-bottom: 1px solid ${panelBorder};
+      color: ${colors.text};
+      vertical-align: middle;
+    }
+    tbody tr:nth-child(even) { background-color: rgba(255, 255, 255, 0.02); }
+    tbody tr:last-child td { border-bottom: none; }
+
+    /* Group header rows (a bold cell as a section title inside a table,
+       e.g. "**🎨 DEMO INTERACTIVO**" with the other cells empty). */
+    tbody tr td strong:only-child { color: ${colors.primary}; }
+
+    /* ===== Metric cards (header: 3-column single-row table) =====
+       Add the .metric-cards class to that table in markdown to render the
+       three header tiles (Inicio · Fase · Retraso) as cards. */
+    .metric-cards, table.metric-cards { border: none; background: none; }
+    .metric-cards thead { display: none; }
+    .metric-cards td {
+      background-color: ${panel};
+      border: 1px solid ${panelBorder};
+      border-left: 3px solid ${colors.primary};
+      border-radius: 8px;
+      text-align: center;
+      padding: 14px 10px;
+      font-size: 14pt;
+    }
+
+    /* ===== Status pills =====
+       Inline code spans are used in the source as status badges
+       (e.g. \`COMPLETADO\`, \`PENDIENTE\`). Render them as pills. */
+    code {
+      background-color: rgba(46, 155, 255, 0.12);
+      color: ${colors.primary};
+      border: 1px solid ${colors.primary}66;
+      border-radius: 999px;
+      padding: 2px 10px;
+      font-family: Inter, sans-serif;
+      font-size: 8.5pt;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      white-space: nowrap;
+    }
+    /* Progress bars (unicode blocks) keep tight spacing */
+    td code:only-child { letter-spacing: 0; }
+
+    /* ===== Blockquotes / important notes ===== */
+    blockquote {
+      background-color: ${panel};
+      border-left: 4px solid ${warn};
+      color: ${colors.text};
+      border-radius: 0 6px 6px 0;
+    }
+    blockquote strong { color: ${warn}; }
+
+    /* ===== Semantic color helpers (opt-in via classes in markdown) ===== */
+    .ok, .status-ok { color: ${ok}; border-color: ${ok}66; background-color: ${ok}1f; }
+    .warn, .status-warn { color: ${warn}; border-color: ${warn}66; background-color: ${warn}1f; }
+    .danger, .status-danger { color: ${danger}; border-color: ${danger}66; background-color: ${danger}1f; }
+    .info, .status-info { color: ${info}; border-color: ${info}66; background-color: ${info}1f; }
+    .bar-ok { color: ${ok}; }
+    .bar-warn { color: ${warn}; }
+    .bar-muted { color: ${muted}; }
+
+    /* Footer line (italic confidential) */
+    main > p > em:only-child { color: ${muted}; }
   `;
 }
 
