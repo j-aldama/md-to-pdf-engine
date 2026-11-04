@@ -159,28 +159,105 @@ function generateDarkExecutiveStyles(template: TemplateConfig): string {
 
   return `
     /* ===== Ejecutiva Oscura — full-bleed dark page =====
-       The dark background must reach every physical edge of the sheet.
-       @page margin:0 removes the print margin; html/body paint the full
-       page background; inner spacing lives on <main> so the fill bleeds. */
+       The dark background must reach every physical edge of the sheet AND
+       every page must have breathing room at the top/bottom. We keep a
+       physical @page top/bottom margin (so every page — not just the first —
+       has a top margin) while painting the full sheet (margin box included)
+       with the dark background. Left/right padding lives on <main>. */
     @page {
-      margin: 0;
+      margin: 16mm 0;
       background-color: ${colors.background};
     }
     html {
       background-color: ${colors.background} !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
     body {
       background-color: ${colors.background} !important;
       color: ${colors.text};
       margin: 0;
       padding: 0;
-      min-height: 100vh;
     }
-    /* Inner page padding (page margins are 0 so the fill is full-bleed) */
+    /* Horizontal inner padding only — vertical spacing comes from @page. */
     main {
       display: block;
       background-color: ${colors.background};
-      padding: 20mm 16mm;
+      padding: 0 16mm;
+    }
+    /* Avoid ugly mid-block page cuts. Long tables MAY split across pages
+       (so they don't leave a big empty gap), but individual rows never split,
+       the header repeats, and short blocks (notes, headings) stay together. */
+    main table { page-break-inside: auto; break-inside: auto; }
+    main thead { display: table-header-group; }
+    main tr { page-break-inside: avoid; break-inside: avoid; }
+    main h1, main h2, main h3 { page-break-after: avoid; break-after: avoid; }
+    main blockquote { page-break-inside: avoid; break-inside: avoid; }
+
+    /* ===== Cover page (Neurya-style) =====
+       A <div class="cover-page"> at the top of the document becomes a full
+       dark sheet with the title block centered. No page number on the cover
+       (the footer script already hides it on page 1). */
+    .cover-page {
+      page-break-after: always;
+      break-after: page;
+      min-height: 248mm; /* ~A4 height minus the 16mm top+bottom @page margin */
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+    .cover-page .cover-logo { max-height: 46px; margin-bottom: 18mm; }
+    .cover-page h1 {
+      border: none;
+      font-size: 34pt;
+      letter-spacing: 0.02em;
+      margin: 0 0 4mm 0;
+      color: #ffffff;
+    }
+    .cover-page .cover-subtitle {
+      color: ${colors.primary};
+      text-transform: uppercase;
+      letter-spacing: 0.35em;
+      font-size: 13pt;
+      font-weight: 700;
+      margin-bottom: 22mm;
+    }
+    /* The CLIENTE/PROYECTO/FECHA cards sit lower on the cover */
+    .cover-page .cover-meta {
+      display: flex;
+      gap: 10mm;
+      justify-content: center;
+      flex-wrap: wrap;
+      width: 100%;
+    }
+    .cover-page .cover-meta .cover-card {
+      border-left: 3px solid ${colors.primary};
+      background-color: ${panel};
+      padding: 10px 18px;
+      text-align: left;
+      min-width: 48mm;
+      border-radius: 4px;
+    }
+    .cover-page .cover-meta .cover-card .label {
+      display: block;
+      color: ${muted};
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      font-size: 7.5pt;
+      margin-bottom: 3px;
+    }
+    .cover-page .cover-meta .cover-card .value {
+      color: #ffffff;
+      font-weight: 700;
+      font-size: 11pt;
+    }
+    .cover-page .cover-confidential {
+      margin-top: 24mm;
+      color: ${muted};
+      font-size: 8pt;
+      letter-spacing: 0.1em;
     }
 
     /* Headings on dark */
