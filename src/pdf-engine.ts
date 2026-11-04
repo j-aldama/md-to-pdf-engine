@@ -78,6 +78,29 @@ function wrapCoverPage(htmlContent: string): string {
 }
 
 /**
+ * Keep a short lead-in paragraph (e.g. "Incluye:" or "Con Agregar creas un
+ * usuario:") glued to the list or screenshot it introduces, so page breaks
+ * never strand it alone at the bottom of a page. `break-after: avoid` on the
+ * paragraph is not enough in Chromium when the following block is taller than
+ * the remaining space — the reliable fix is to wrap both in one element with
+ * `break-inside: avoid`. We only wrap SHORT lead-ins (a single line ending in
+ * ":") so we don't accidentally glue a long paragraph to a full-page image.
+ */
+function keepLeadInsWithTheirBlock(html: string): string {
+  // <p>…:</p> immediately followed by a <ul>/<ol>, or by a <p> that holds only
+  // an <img>. The lead-in must be short (no nested block tags, ends with ":").
+  const leadIn = "<p>((?:(?!</p>).){0,160}:)</p>\\s*";
+  const list = "(<(?:ul|ol)\\b[\\s\\S]*?</(?:ul|ol)>)";
+  const figure = "(<p>\\s*<img\\b[^>]*>\\s*</p>)";
+  let out = html.replace(
+    new RegExp(leadIn + "(?:" + list + "|" + figure + ")", "g"),
+    (_m, lead, listBlock, figBlock) =>
+      `<div class="keep-together"><p>${lead}</p>${listBlock ?? figBlock}</div>`,
+  );
+  return out;
+}
+
+/**
  * Converts Markdown to full HTML with styles applied, ready for rendering.
  */
 export function markdownToHTML(
@@ -87,6 +110,7 @@ export function markdownToHTML(
 ): string {
   const marked = createConfiguredMarked();
   let htmlContent = marked.parse(markdown) as string;
+  htmlContent = keepLeadInsWithTheirBlock(htmlContent);
 
   // Dark executive template: if the cover logo is left empty, fall back to the
   // embedded Neurya white wordmark. Any explicit src is respected (generic use).
