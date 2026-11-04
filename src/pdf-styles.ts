@@ -155,7 +155,6 @@ function generateDarkExecutiveStyles(template: TemplateConfig): string {
   const ok = "#22c55e"; // green — done / good
   const warn = "#f59e0b"; // amber — delay / pending
   const danger = "#ef4444"; // red — critical / blocker
-  const info = "#38bdf8"; // cyan — in approval / dev
 
   return `
     /* ===== Ejecutiva Oscura — full-bleed dark page =====
@@ -199,6 +198,7 @@ function generateDarkExecutiveStyles(template: TemplateConfig): string {
        dark sheet with the title block centered. No page number on the cover
        (the footer script already hides it on page 1). */
     .cover-page {
+      position: relative;
       page-break-after: always;
       break-after: page;
       min-height: 248mm; /* ~A4 height minus the 16mm top+bottom @page margin */
@@ -207,8 +207,19 @@ function generateDarkExecutiveStyles(template: TemplateConfig): string {
       align-items: center;
       justify-content: center;
       text-align: center;
+      /* Radial+linear gradient (dark navy → deep black) like the brand cover.
+         Negative margins + matching padding bleed the gradient to the page
+         edges (the 16mm @page margin + 16mm <main> side padding). */
+      margin: -16mm -16mm 0 -16mm;
+      padding: 16mm 16mm 0 16mm;
+      background:
+        radial-gradient(120% 80% at 50% 38%, #1b2c4a 0%, #0e1726 46%, #070b13 100%);
     }
-    .cover-page .cover-logo { max-height: 46px; margin-bottom: 18mm; }
+    .cover-page .cover-logo {
+      max-height: 58px;
+      max-width: 60%;
+      margin-bottom: 16mm;
+    }
     .cover-page h1 {
       border: none;
       font-size: 34pt;
@@ -335,8 +346,69 @@ function generateDarkExecutiveStyles(template: TemplateConfig): string {
       letter-spacing: 0.03em;
       white-space: nowrap;
     }
-    /* Progress bars (unicode blocks) keep tight spacing */
-    td code:only-child { letter-spacing: 0; }
+
+    /* ===== Real progress bars =====
+       A <span class="bar" data-pct="70"> … </span> in a table cell renders a
+       proportional fill (not unicode blocks). Color by completion / state. */
+    .bar {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      min-width: 90px;
+    }
+    .bar .track {
+      flex: 1;
+      height: 9px;
+      background: #0c1525;
+      border: 1px solid ${panelBorder};
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .bar .fill {
+      display: block;
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, ${colors.primary}, #5ab0ff);
+    }
+    .bar.is-done .fill { background: linear-gradient(90deg, ${ok}, #34d27f); }
+    .bar.is-warn .fill { background: linear-gradient(90deg, ${warn}, #fbbf4d); }
+    .bar.is-blocked .fill { background: linear-gradient(90deg, ${danger}, #f06868); }
+    .bar .pct {
+      font-size: 8.5pt;
+      font-weight: 700;
+      color: ${muted};
+      min-width: 30px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ===== Gantt with real horizontal bars =====
+       Table where each phase row has month columns; the bar is an absolutely
+       positioned element inside a .gantt-track cell spanning the active span. */
+    table.gantt td, table.gantt th { text-align: center; }
+    table.gantt td:first-child, table.gantt th:first-child { text-align: left; }
+    table.gantt .phase { font-weight: 700; color: #fff; }
+    table.gantt .phase small { display: block; color: ${muted}; font-weight: 400; font-size: 7.5pt; }
+    table.gantt .gantt-cell { padding: 6px 4px; position: relative; }
+    .gantt-bar {
+      display: block;
+      height: 12px;
+      border-radius: 999px;
+      background: ${colors.primary};
+    }
+    .gantt-bar.is-dev { background: ${colors.primary}; }
+    .gantt-bar.is-done { background: ${ok}; }
+    .gantt-bar.is-delay {
+      background: repeating-linear-gradient(
+        45deg, ${danger}, ${danger} 4px, #b23636 4px, #b23636 8px
+      );
+    }
+    .gantt-bar.is-milestone {
+      width: 12px; height: 12px; border-radius: 50%;
+      background: ${ok}; margin: 0 auto;
+    }
+    .gantt-empty { color: #2a3a55; }
 
     /* ===== Blockquotes / important notes ===== */
     blockquote {
@@ -346,15 +418,6 @@ function generateDarkExecutiveStyles(template: TemplateConfig): string {
       border-radius: 0 6px 6px 0;
     }
     blockquote strong { color: ${warn}; }
-
-    /* ===== Semantic color helpers (opt-in via classes in markdown) ===== */
-    .ok, .status-ok { color: ${ok}; border-color: ${ok}66; background-color: ${ok}1f; }
-    .warn, .status-warn { color: ${warn}; border-color: ${warn}66; background-color: ${warn}1f; }
-    .danger, .status-danger { color: ${danger}; border-color: ${danger}66; background-color: ${danger}1f; }
-    .info, .status-info { color: ${info}; border-color: ${info}66; background-color: ${info}1f; }
-    .bar-ok { color: ${ok}; }
-    .bar-warn { color: ${warn}; }
-    .bar-muted { color: ${muted}; }
 
     /* Footer line (italic confidential) */
     main > p > em:only-child { color: ${muted}; }

@@ -2,6 +2,7 @@ import { Marked } from "marked";
 import hljs from "highlight.js";
 import puppeteer, { type Browser } from "puppeteer";
 import { generatePDFStyles, generateHeaderHTML, generateFooterHTML } from "./pdf-styles";
+import { DEFAULT_DARK_LOGO_DATA_URI } from "./templates/ejecutiva-oscura-logo";
 import type { TemplateConfig, PDFOptions } from "./types";
 import type { Logger } from "./cli/logger";
 
@@ -86,6 +87,16 @@ export function markdownToHTML(
 ): string {
   const marked = createConfiguredMarked();
   let htmlContent = marked.parse(markdown) as string;
+
+  // Dark executive template: if the cover logo is left empty, fall back to the
+  // embedded Neurya white wordmark. Any explicit src is respected (generic use).
+  if (template.id === "ejecutiva-oscura") {
+    htmlContent = htmlContent.replace(
+      /(<img[^>]*class="cover-logo"[^>]*\bsrc=")(\s*)(")/i,
+      `$1${DEFAULT_DARK_LOGO_DATA_URI}$3`,
+    );
+  }
+
   const css = generatePDFStyles(template);
   const highlightCSS = getHighlightCSS();
   const headerHTML = generateHeaderHTML(template);
