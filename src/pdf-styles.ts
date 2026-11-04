@@ -7,7 +7,7 @@ import type { TemplateConfig } from "./types";
 export function generatePDFStyles(template: TemplateConfig): string {
   const { colors, fonts } = template;
 
-  return `
+  const baseCss = `
     /* Reset and base */
     *, *::before, *::after {
       box-sizing: border-box;
@@ -118,6 +118,7 @@ export function generatePDFStyles(template: TemplateConfig): string {
 
     /* Pagination */
     .page-break { page-break-after: always; }
+    .page-break-before { page-break-before: always; break-before: page; }
     .cover-page { page-break-after: always; break-after: page; }
     * { orphans: 2; widows: 2; }
 
@@ -131,6 +132,464 @@ export function generatePDFStyles(template: TemplateConfig): string {
       thead { display: table-header-group; }
       img { page-break-inside: avoid; break-inside: avoid; }
     }
+  `;
+
+  // Rich dark theme: extra rules attached to this template's id only.
+  // Other templates are unaffected.
+  if (template.id === "ejecutiva-oscura") {
+    return baseCss + generateDarkExecutiveStyles(template);
+  }
+
+  // Manual de usuario (genérico): refinamientos de legibilidad y jerarquía sobre
+  // el CSS base, atados solo a este id (otras plantillas no se ven afectadas).
+  // Los colores salen de template.colors, así que sirve para cualquier marca.
+  if (template.id === "manual-usuario") {
+    return baseCss + generateManualStyles(template);
+  }
+
+  return baseCss;
+}
+
+/**
+ * Extra CSS para la plantilla "manual-usuario" (manual de usuario impreso, de
+ * cualquier marca). Mejoras de estilo sobre el CSS base: ancho de línea legible,
+ * callouts destacados, tablas con más aire, capturas encuadradas y mejor
+ * jerarquía. Pensado para leerse cómodo tanto en pantalla (HTML) como impreso
+ * (PDF A4). Toma los colores de `template.colors` (no hay nada hardcodeado de
+ * marca), así que se adapta a cada cliente.
+ */
+function generateManualStyles(template: TemplateConfig): string {
+  const { colors } = template;
+  const brand = colors.primary; // color de títulos / marca (p. ej. Navy)
+  const accent = colors.accent; // separadores / enlaces (p. ej. Red)
+  const ink = "#1f2433"; // texto principal (un poco más oscuro que #333)
+  const muted = "#5b6472"; // texto secundario / cursivas
+  const noteBg = "#f4f6fb"; // fondo de callouts (gris azulado muy claro)
+  const tableHeadText = "#ffffff";
+  const zebra = "#f7f8fc"; // filas alternas
+  const cardBorder = "#d9deea"; // bordes de capturas / separadores suaves
+
+  return `
+    /* ===== Manual de usuario — refinamientos de estilo ===== */
+
+    /* Ancho de línea legible: el cuerpo corría de borde a borde (líneas muy
+       largas dañan la lectura). Limitamos el contenido a una medida cómoda y
+       lo centramos. En impresión el @page ya acota; esto ayuda sobre todo al
+       HTML de revisión en pantallas anchas. */
+    main {
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 0 8px;
+      color: ${ink};
+    }
+    body { color: ${ink}; }
+
+    /* Jerarquía de encabezados con la marca. El H1 ya viene del base; reforzamos
+       el H2 (número de sección) y damos al H3 el color de acento para que las
+       subsecciones se distingan de un vistazo. */
+    h1 { letter-spacing: -0.01em; }
+    h2 {
+      color: ${brand};
+      border-bottom: 2px solid ${accent};
+      padding-bottom: 0.25em;
+      margin-top: 1.8em;
+    }
+    h3 {
+      color: ${accent};
+      font-size: 16pt;
+      margin-top: 1.4em;
+    }
+    h4 { color: ${brand}; }
+
+    /* Enlaces del índice: el acento subrayado a veces "vibra"; lo suavizamos. */
+    a { color: ${accent}; text-underline-offset: 2px; }
+
+    /* Listas: viñetas en color de marca (no acento) para que no compitan con
+       los enlaces. */
+    li::marker { color: ${brand}; }
+
+    /* ===== Tablas con más aire y zebra visible ===== */
+    table {
+      border: 1px solid ${cardBorder};
+      border-radius: 6px;
+      overflow: hidden;
+      font-size: 11pt;
+    }
+    thead { background-color: ${brand}; color: ${tableHeadText}; }
+    th {
+      border: none;
+      border-bottom: 1px solid ${brand};
+      padding: 11px 14px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+    td {
+      border: none;
+      border-bottom: 1px solid ${cardBorder};
+      padding: 10px 14px;
+      vertical-align: top;
+    }
+    tbody tr:nth-child(even) { background-color: ${zebra}; }
+    tbody tr:last-child td { border-bottom: none; }
+    /* Primera columna de las tablas de campos/columnas: en negrita-marca para
+       que se lea como "etiqueta". */
+    tbody td:first-child strong { color: ${brand}; }
+
+    /* ===== Callouts (blockquote) destacados =====
+       Las notas "Importante / Por qué importa / Consejo" deben saltar a la
+       vista, no parecer un párrafo más. Fondo suave, barra de marca y el primer
+       término en color de acento. */
+    blockquote {
+      border-left: 4px solid ${brand};
+      background-color: ${noteBg};
+      border-radius: 0 6px 6px 0;
+      padding: 0.9em 1.3em;
+      margin: 1.1em 0;
+      color: ${ink};
+    }
+    blockquote strong:first-child,
+    blockquote p:first-child strong:first-child { color: ${accent}; }
+
+    /* ===== Capturas de pantalla encuadradas =====
+       Las capturas (UI oscura) flotaban sin separación del texto. Un borde
+       sutil + sombra suave + esquinas redondeadas las "encierra" como figura
+       y las despega del cuerpo. */
+    main img {
+      display: block;
+      margin: 1.1em auto 1.3em auto;
+      border: 1px solid ${cardBorder};
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(27, 37, 89, 0.10);
+      max-width: 100%;
+      /* Cap the height so a tall full-page screenshot scales down and still
+         leaves room for the heading/intro that announces it — otherwise it
+         eats a whole page and pushes its lead-in line onto an empty one. */
+      max-height: 170mm;
+      width: auto;
+      object-fit: contain;
+    }
+
+    /* Cursiva / cierre: tono atenuado y legible. */
+    em { color: ${muted}; }
+
+    /* Regla horizontal suave (no el gris fuerte del base). */
+    hr { border-top: 2px solid ${cardBorder}; }
+
+    /* ===== Reglas de impresión específicas =====
+       Evitar que una captura se separe de su explicación, y que los callouts
+       no se partan a mitad de página. */
+    @media print {
+      main { max-width: none; padding: 0; }
+      main img {
+        box-shadow: none;
+        page-break-inside: avoid; break-inside: avoid;
+        max-height: 170mm; width: auto; object-fit: contain;
+      }
+      blockquote { page-break-inside: avoid; break-inside: avoid; }
+      h2, h3 { page-break-after: avoid; break-after: avoid; }
+    }
+  `;
+}
+
+/**
+ * Extra CSS for the "ejecutiva-oscura" template: full-bleed dark page,
+ * metric cards, status pills, colored progress bars and grouped table rows.
+ * Built to render the executive status-report layout on a dark background.
+ */
+function generateDarkExecutiveStyles(template: TemplateConfig): string {
+  const { colors } = template;
+  const panel = "#16223a"; // card / panel surface
+  const panelBorder = "#243b5e"; // panel & table border
+  const muted = "#8aa0bd"; // secondary / muted text
+  const ok = "#22c55e"; // green — done / good
+  const warn = "#f59e0b"; // amber — delay / pending
+  const danger = "#ef4444"; // red — critical / blocker
+
+  return `
+    /* ===== Ejecutiva Oscura — full-bleed dark page =====
+       The dark background must reach every physical edge of the sheet AND
+       every page must have breathing room at the top/bottom. We keep a
+       physical @page top/bottom margin (so every page — not just the first —
+       has a top margin) while painting the full sheet (margin box included)
+       with the dark background. Left/right padding lives on <main>. */
+    @page {
+      margin: 16mm 0;
+      background-color: ${colors.background};
+    }
+    html {
+      background-color: ${colors.background} !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    body {
+      background-color: ${colors.background} !important;
+      color: ${colors.text};
+      margin: 0;
+      padding: 0;
+    }
+    /* Horizontal inner padding only — vertical spacing comes from @page. */
+    main {
+      display: block;
+      background-color: ${colors.background};
+      padding: 0 16mm;
+    }
+    /* Avoid ugly mid-block page cuts. Long tables MAY split across pages
+       (so they don't leave a big empty gap), but individual rows never split,
+       the header repeats, and short blocks (notes, headings) stay together. */
+    main table { page-break-inside: auto; break-inside: auto; }
+    main thead { display: table-header-group; }
+    main tr { page-break-inside: avoid; break-inside: avoid; }
+    main h1, main h2, main h3 { page-break-after: avoid; break-after: avoid; }
+    main blockquote { page-break-inside: avoid; break-inside: avoid; }
+
+    /* Keep an intro line glued to the figure/list it announces, so a heading
+       or a "…:" lead-in never sits alone at the bottom of a page while its
+       screenshot or bullet list starts on the next one. Markdown renders each
+       image as its own <p><img>, so we chain: heading → intro → image, and
+       intro → list. (:has() is supported by the Chromium renderer.) */
+    main p:has(> img) { page-break-inside: avoid; break-inside: avoid; }
+    main p:has(+ p > img) { page-break-after: avoid; break-after: avoid; }
+    main p:has(+ ul), main p:has(+ ol) { page-break-after: avoid; break-after: avoid; }
+    /* Lead-in + its list/figure, wrapped together by the HTML post-process so
+       Chromium keeps them on the same page (break-after alone is unreliable
+       when the following block is taller than the remaining space). */
+    main .keep-together { page-break-inside: avoid; break-inside: avoid; }
+    main .keep-together > p { page-break-after: avoid; break-after: avoid; margin-bottom: 0.4em; }
+    /* Don't let a closing rule + note orphan onto a page of its own: keep the
+       final <hr> and the paragraph after it glued to the preceding content. */
+    main hr:last-of-type { page-break-before: avoid; break-before: avoid; }
+    main hr:last-of-type + p { page-break-before: avoid; break-before: avoid; }
+    main h1:has(+ p > img), main h2:has(+ p > img), main h3:has(+ p > img),
+    main h1:has(+ p), main h2:has(+ p), main h3:has(+ p) { page-break-after: avoid; break-after: avoid; }
+
+    /* ===== Cover page (Neurya-style) =====
+       A <div class="cover-page"> at the top of the document becomes a full
+       dark sheet with the title block centered. No page number on the cover
+       (the footer script already hides it on page 1). */
+    .cover-page {
+      position: relative;
+      page-break-after: always;
+      break-after: page;
+      min-height: 248mm; /* ~A4 height minus the 16mm top+bottom @page margin */
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      /* Radial+linear gradient (dark navy → deep black) like the brand cover.
+         Negative margins + matching padding bleed the gradient to the page
+         edges (the 16mm @page margin + 16mm <main> side padding). */
+      margin: -16mm -16mm 0 -16mm;
+      padding: 16mm 16mm 0 16mm;
+      background:
+        radial-gradient(120% 80% at 50% 38%, #1b2c4a 0%, #0e1726 46%, #070b13 100%);
+    }
+    .cover-page .cover-logo {
+      max-height: 58px;
+      max-width: 60%;
+      margin-bottom: 16mm;
+    }
+    .cover-page h1 {
+      border: none;
+      font-size: 34pt;
+      letter-spacing: 0.02em;
+      margin: 0 0 4mm 0;
+      color: #ffffff;
+    }
+    .cover-page .cover-subtitle {
+      color: ${colors.primary};
+      text-transform: uppercase;
+      letter-spacing: 0.35em;
+      font-size: 13pt;
+      font-weight: 700;
+      margin-bottom: 22mm;
+    }
+    /* The CLIENTE/PROYECTO/FECHA cards sit lower on the cover */
+    .cover-page .cover-meta {
+      display: flex;
+      gap: 10mm;
+      justify-content: center;
+      flex-wrap: wrap;
+      width: 100%;
+    }
+    .cover-page .cover-meta .cover-card {
+      border-left: 3px solid ${colors.primary};
+      background-color: ${panel};
+      padding: 10px 18px;
+      text-align: left;
+      min-width: 48mm;
+      border-radius: 4px;
+    }
+    .cover-page .cover-meta .cover-card .label {
+      display: block;
+      color: ${muted};
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      font-size: 7.5pt;
+      margin-bottom: 3px;
+    }
+    .cover-page .cover-meta .cover-card .value {
+      color: #ffffff;
+      font-weight: 700;
+      font-size: 11pt;
+    }
+    .cover-page .cover-confidential {
+      margin-top: 24mm;
+      color: ${muted};
+      font-size: 8pt;
+      letter-spacing: 0.1em;
+    }
+
+    /* Headings on dark */
+    h1 { color: ${colors.primary}; border-bottom: 2px solid ${colors.primary}; }
+    h2 {
+      color: ${colors.primary};
+      border-bottom: 1px solid ${panelBorder};
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      font-size: 20pt;
+    }
+    h3, h4, h5, h6 { color: ${colors.text}; }
+    strong { color: #ffffff; }
+    em { color: ${muted}; }
+    a { color: ${colors.accent}; }
+    hr { border-top: 1px solid ${panelBorder}; }
+    li::marker { color: ${colors.accent}; }
+
+    /* ===== Tables on dark ===== */
+    table {
+      border: 1px solid ${panelBorder};
+      border-radius: 8px;
+      overflow: hidden;
+      background-color: ${panel};
+    }
+    thead { background-color: #0f1d34; color: ${colors.primary}; }
+    th {
+      border: none;
+      border-bottom: 1px solid ${panelBorder};
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      font-size: 9.5pt;
+      color: ${colors.primary};
+    }
+    td {
+      border: none;
+      border-bottom: 1px solid ${panelBorder};
+      color: ${colors.text};
+      vertical-align: middle;
+    }
+    tbody tr:nth-child(even) { background-color: rgba(255, 255, 255, 0.02); }
+    tbody tr:last-child td { border-bottom: none; }
+
+    /* Group header rows (a bold cell as a section title inside a table,
+       e.g. "**🎨 DEMO INTERACTIVO**" with the other cells empty). */
+    tbody tr td strong:only-child { color: ${colors.primary}; }
+
+    /* ===== Metric cards (header: 3-column single-row table) =====
+       Add the .metric-cards class to that table in markdown to render the
+       three header tiles (Inicio · Fase · Retraso) as cards. */
+    .metric-cards, table.metric-cards { border: none; background: none; }
+    .metric-cards thead { display: none; }
+    .metric-cards td {
+      background-color: ${panel};
+      border: 1px solid ${panelBorder};
+      border-left: 3px solid ${colors.primary};
+      border-radius: 8px;
+      text-align: center;
+      padding: 14px 10px;
+      font-size: 14pt;
+    }
+
+    /* ===== Status pills =====
+       Inline code spans are used in the source as status badges
+       (e.g. \`COMPLETADO\`, \`PENDIENTE\`). Render them as pills. */
+    code {
+      background-color: rgba(46, 155, 255, 0.12);
+      color: ${colors.primary};
+      border: 1px solid ${colors.primary}66;
+      border-radius: 999px;
+      padding: 2px 10px;
+      font-family: Inter, sans-serif;
+      font-size: 8.5pt;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      white-space: nowrap;
+    }
+
+    /* ===== Real progress bars =====
+       A <span class="bar" data-pct="70"> … </span> in a table cell renders a
+       proportional fill (not unicode blocks). Color by completion / state. */
+    .bar {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      min-width: 90px;
+    }
+    .bar .track {
+      flex: 1;
+      height: 9px;
+      background: #0c1525;
+      border: 1px solid ${panelBorder};
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .bar .fill {
+      display: block;
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, ${colors.primary}, #5ab0ff);
+    }
+    .bar.is-done .fill { background: linear-gradient(90deg, ${ok}, #34d27f); }
+    .bar.is-warn .fill { background: linear-gradient(90deg, ${warn}, #fbbf4d); }
+    .bar.is-blocked .fill { background: linear-gradient(90deg, ${danger}, #f06868); }
+    .bar .pct {
+      font-size: 8.5pt;
+      font-weight: 700;
+      color: ${muted};
+      min-width: 30px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ===== Gantt with real horizontal bars =====
+       Table where each phase row has month columns; the bar is an absolutely
+       positioned element inside a .gantt-track cell spanning the active span. */
+    table.gantt td, table.gantt th { text-align: center; }
+    table.gantt td:first-child, table.gantt th:first-child { text-align: left; }
+    table.gantt .phase { font-weight: 700; color: #fff; }
+    table.gantt .phase small { display: block; color: ${muted}; font-weight: 400; font-size: 7.5pt; }
+    table.gantt .gantt-cell { padding: 6px 4px; position: relative; }
+    .gantt-bar {
+      display: block;
+      height: 12px;
+      border-radius: 999px;
+      background: ${colors.primary};
+    }
+    .gantt-bar.is-dev { background: ${colors.primary}; }
+    .gantt-bar.is-done { background: ${ok}; }
+    .gantt-bar.is-delay {
+      background: repeating-linear-gradient(
+        45deg, ${danger}, ${danger} 4px, #b23636 4px, #b23636 8px
+      );
+    }
+    .gantt-bar.is-milestone {
+      width: 12px; height: 12px; border-radius: 50%;
+      background: ${ok}; margin: 0 auto;
+    }
+    .gantt-empty { color: #2a3a55; }
+
+    /* ===== Blockquotes / important notes ===== */
+    blockquote {
+      background-color: ${panel};
+      border-left: 4px solid ${warn};
+      color: ${colors.text};
+      border-radius: 0 6px 6px 0;
+    }
+    blockquote strong { color: ${warn}; }
+
+    /* Footer line (italic confidential) */
+    main > p > em:only-child { color: ${muted}; }
   `;
 }
 
@@ -159,8 +618,13 @@ export function generateHeaderHTML(template: TemplateConfig): string {
 
 /**
  * Generates the footer HTML with page number.
+ * When `darkTheme` is true, the footer blends into a dark page background
+ * (muted text, no light separator line) instead of the default light look.
  */
-export function generateFooterHTML(pageNumberFormat: string): string {
+export function generateFooterHTML(
+  pageNumberFormat: string,
+  darkTheme = false,
+): string {
   let content: string;
 
   switch (pageNumberFormat) {
@@ -179,8 +643,11 @@ export function generateFooterHTML(pageNumberFormat: string): string {
       break;
   }
 
+  const footerColor = darkTheme ? "#8aa0bd" : "#666";
+  const footerBorder = darkTheme ? "1px solid #243b5e" : "1px solid #e0e0e0";
+
   return `
-    <div style="font-size: 9pt; color: #666; text-align: center; width: 100%; padding-top: 5px; border-top: 1px solid #e0e0e0;">
+    <div style="font-size: 9pt; color: ${footerColor}; text-align: center; width: 100%; padding-top: 5px; border-top: ${footerBorder};">
       ${content}
     </div>
   `;
