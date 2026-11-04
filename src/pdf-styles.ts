@@ -118,6 +118,7 @@ export function generatePDFStyles(template: TemplateConfig): string {
 
     /* Pagination */
     .page-break { page-break-after: always; }
+    .page-break-before { page-break-before: always; break-before: page; }
     .cover-page { page-break-after: always; break-after: page; }
     * { orphans: 2; widows: 2; }
 
@@ -139,7 +140,155 @@ export function generatePDFStyles(template: TemplateConfig): string {
     return baseCss + generateDarkExecutiveStyles(template);
   }
 
+  // Manual de usuario (genérico): refinamientos de legibilidad y jerarquía sobre
+  // el CSS base, atados solo a este id (otras plantillas no se ven afectadas).
+  // Los colores salen de template.colors, así que sirve para cualquier marca.
+  if (template.id === "manual-usuario") {
+    return baseCss + generateManualStyles(template);
+  }
+
   return baseCss;
+}
+
+/**
+ * Extra CSS para la plantilla "manual-usuario" (manual de usuario impreso, de
+ * cualquier marca). Mejoras de estilo sobre el CSS base: ancho de línea legible,
+ * callouts destacados, tablas con más aire, capturas encuadradas y mejor
+ * jerarquía. Pensado para leerse cómodo tanto en pantalla (HTML) como impreso
+ * (PDF A4). Toma los colores de `template.colors` (no hay nada hardcodeado de
+ * marca), así que se adapta a cada cliente.
+ */
+function generateManualStyles(template: TemplateConfig): string {
+  const { colors } = template;
+  const brand = colors.primary; // color de títulos / marca (p. ej. Navy)
+  const accent = colors.accent; // separadores / enlaces (p. ej. Red)
+  const ink = "#1f2433"; // texto principal (un poco más oscuro que #333)
+  const muted = "#5b6472"; // texto secundario / cursivas
+  const noteBg = "#f4f6fb"; // fondo de callouts (gris azulado muy claro)
+  const tableHeadText = "#ffffff";
+  const zebra = "#f7f8fc"; // filas alternas
+  const cardBorder = "#d9deea"; // bordes de capturas / separadores suaves
+
+  return `
+    /* ===== Manual de usuario — refinamientos de estilo ===== */
+
+    /* Ancho de línea legible: el cuerpo corría de borde a borde (líneas muy
+       largas dañan la lectura). Limitamos el contenido a una medida cómoda y
+       lo centramos. En impresión el @page ya acota; esto ayuda sobre todo al
+       HTML de revisión en pantallas anchas. */
+    main {
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 0 8px;
+      color: ${ink};
+    }
+    body { color: ${ink}; }
+
+    /* Jerarquía de encabezados con la marca. El H1 ya viene del base; reforzamos
+       el H2 (número de sección) y damos al H3 el color de acento para que las
+       subsecciones se distingan de un vistazo. */
+    h1 { letter-spacing: -0.01em; }
+    h2 {
+      color: ${brand};
+      border-bottom: 2px solid ${accent};
+      padding-bottom: 0.25em;
+      margin-top: 1.8em;
+    }
+    h3 {
+      color: ${accent};
+      font-size: 16pt;
+      margin-top: 1.4em;
+    }
+    h4 { color: ${brand}; }
+
+    /* Enlaces del índice: el acento subrayado a veces "vibra"; lo suavizamos. */
+    a { color: ${accent}; text-underline-offset: 2px; }
+
+    /* Listas: viñetas en color de marca (no acento) para que no compitan con
+       los enlaces. */
+    li::marker { color: ${brand}; }
+
+    /* ===== Tablas con más aire y zebra visible ===== */
+    table {
+      border: 1px solid ${cardBorder};
+      border-radius: 6px;
+      overflow: hidden;
+      font-size: 11pt;
+    }
+    thead { background-color: ${brand}; color: ${tableHeadText}; }
+    th {
+      border: none;
+      border-bottom: 1px solid ${brand};
+      padding: 11px 14px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+    td {
+      border: none;
+      border-bottom: 1px solid ${cardBorder};
+      padding: 10px 14px;
+      vertical-align: top;
+    }
+    tbody tr:nth-child(even) { background-color: ${zebra}; }
+    tbody tr:last-child td { border-bottom: none; }
+    /* Primera columna de las tablas de campos/columnas: en negrita-marca para
+       que se lea como "etiqueta". */
+    tbody td:first-child strong { color: ${brand}; }
+
+    /* ===== Callouts (blockquote) destacados =====
+       Las notas "Importante / Por qué importa / Consejo" deben saltar a la
+       vista, no parecer un párrafo más. Fondo suave, barra de marca y el primer
+       término en color de acento. */
+    blockquote {
+      border-left: 4px solid ${brand};
+      background-color: ${noteBg};
+      border-radius: 0 6px 6px 0;
+      padding: 0.9em 1.3em;
+      margin: 1.1em 0;
+      color: ${ink};
+    }
+    blockquote strong:first-child,
+    blockquote p:first-child strong:first-child { color: ${accent}; }
+
+    /* ===== Capturas de pantalla encuadradas =====
+       Las capturas (UI oscura) flotaban sin separación del texto. Un borde
+       sutil + sombra suave + esquinas redondeadas las "encierra" como figura
+       y las despega del cuerpo. */
+    main img {
+      display: block;
+      margin: 1.1em auto 1.3em auto;
+      border: 1px solid ${cardBorder};
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(27, 37, 89, 0.10);
+      max-width: 100%;
+      /* Cap the height so a tall full-page screenshot scales down and still
+         leaves room for the heading/intro that announces it — otherwise it
+         eats a whole page and pushes its lead-in line onto an empty one. */
+      max-height: 170mm;
+      width: auto;
+      object-fit: contain;
+    }
+
+    /* Cursiva / cierre: tono atenuado y legible. */
+    em { color: ${muted}; }
+
+    /* Regla horizontal suave (no el gris fuerte del base). */
+    hr { border-top: 2px solid ${cardBorder}; }
+
+    /* ===== Reglas de impresión específicas =====
+       Evitar que una captura se separe de su explicación, y que los callouts
+       no se partan a mitad de página. */
+    @media print {
+      main { max-width: none; padding: 0; }
+      main img {
+        box-shadow: none;
+        page-break-inside: avoid; break-inside: avoid;
+        max-height: 170mm; width: auto; object-fit: contain;
+      }
+      blockquote { page-break-inside: avoid; break-inside: avoid; }
+      h2, h3 { page-break-after: avoid; break-after: avoid; }
+    }
+  `;
 }
 
 /**
@@ -192,6 +341,26 @@ function generateDarkExecutiveStyles(template: TemplateConfig): string {
     main tr { page-break-inside: avoid; break-inside: avoid; }
     main h1, main h2, main h3 { page-break-after: avoid; break-after: avoid; }
     main blockquote { page-break-inside: avoid; break-inside: avoid; }
+
+    /* Keep an intro line glued to the figure/list it announces, so a heading
+       or a "…:" lead-in never sits alone at the bottom of a page while its
+       screenshot or bullet list starts on the next one. Markdown renders each
+       image as its own <p><img>, so we chain: heading → intro → image, and
+       intro → list. (:has() is supported by the Chromium renderer.) */
+    main p:has(> img) { page-break-inside: avoid; break-inside: avoid; }
+    main p:has(+ p > img) { page-break-after: avoid; break-after: avoid; }
+    main p:has(+ ul), main p:has(+ ol) { page-break-after: avoid; break-after: avoid; }
+    /* Lead-in + its list/figure, wrapped together by the HTML post-process so
+       Chromium keeps them on the same page (break-after alone is unreliable
+       when the following block is taller than the remaining space). */
+    main .keep-together { page-break-inside: avoid; break-inside: avoid; }
+    main .keep-together > p { page-break-after: avoid; break-after: avoid; margin-bottom: 0.4em; }
+    /* Don't let a closing rule + note orphan onto a page of its own: keep the
+       final <hr> and the paragraph after it glued to the preceding content. */
+    main hr:last-of-type { page-break-before: avoid; break-before: avoid; }
+    main hr:last-of-type + p { page-break-before: avoid; break-before: avoid; }
+    main h1:has(+ p > img), main h2:has(+ p > img), main h3:has(+ p > img),
+    main h1:has(+ p), main h2:has(+ p), main h3:has(+ p) { page-break-after: avoid; break-after: avoid; }
 
     /* ===== Cover page (Neurya-style) =====
        A <div class="cover-page"> at the top of the document becomes a full
